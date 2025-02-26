@@ -7,8 +7,10 @@ import json
 from flask import session
 import uuid
 import os
-
+import functools
+from flask import session, flash, redirect, url_for
 app = Flask(__name__)
+
 app.secret_key = 'db9a92a0ad6a5f61bcd723111d31e847c879a5d22e2c8e778fe38ed1fda0ab40'
 
 # ========================
@@ -157,15 +159,17 @@ game_state = {
     "race_simulation": {}  # For live race simulation state.
 }
 
-# Global dictionary to store each user’s game state.
 user_game_states = {}
 
 def get_game_state():
-    # Ensure each user gets a unique id stored in the session.
+    """
+    Returns a per-user game state from a global dictionary, keyed by session ID.
+    If no game_state_id is in the session, create one.
+    If there's no entry in user_game_states for that ID, initialize it.
+    """
     if "game_state_id" not in session:
-        session["game_state_id"] = str(uuid.uuid4())
+        session["game_state_id"] = str(uuid.uuid4())  # or any unique ID generator
     game_state_id = session["game_state_id"]
-    # If there is no game state for this ID, initialize one.
     if game_state_id not in user_game_states:
         user_game_states[game_state_id] = {
             "player_team": None,
@@ -175,12 +179,24 @@ def get_game_state():
             "training_plan": {},
             "race_results": {},
             "race_simulation": {},
-            # Add any additional keys you need (e.g., recruiting data).
-            "recruits": None,
-            "recruiting_round": None,
-            "recruiting_points": None,
+            # ... plus any other keys you need (e.g. recruits, recruiting_points, etc.)
         }
     return user_game_states[game_state_id]
+
+def require_player_team(f):
+    """
+    A decorator that ensures the user has a valid 'player_team' in the game state.
+    If not, redirects to /select_team (or whichever route sets the team).
+    """
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        state = get_game_state()
+        if not state.get("player_team"):
+            flash("You must select a team before continuing.", "danger")
+            return redirect(url_for("select_team"))
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 # ------------------------
 # Append Mandatory Postseason Meets
@@ -514,12 +530,9 @@ def inject_globals():
 
 
 @app.route('/dashboard')
+@require_player_team
 def dashboard():
     state = get_game_state()
-    # If user does not have a team, show them a note or redirect them to selection once:
-    if not state.get("player_team"):
-        flash("Please select a team first.", "info")
-        return redirect(url_for("select_team"))
     cw = state["current_week"]
     plan = state["training_plan"].get(cw, {})
     scheduled_race = next((m for m in state["scheduled_meets"] if m.week == cw), None)
@@ -536,8 +549,6 @@ def dashboard():
                            race_result=race_result,
                            season_over=season_over,
                            scheduled_meets=state["scheduled_meets"])
-
-
 
 
 @app.route('/roster')
