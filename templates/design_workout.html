@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Design Workout for {{ day }}</h2>
+<form method="post">
+  <div class="mb-3">
+    <label for="interval_amount" class="form-label">Interval Amount</label>
+    <input type="number" name="interval_amount" id="interval_amount" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label for="interval_length" class="form-label">Interval Length (km)</label>
+    <input type="number" step="0.1" name="interval_length" id="interval_length" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label for="pace" class="form-label">Pace (m:ss or mm:ss per mile)</label>
+    <input type="text" name="pace" id="pace" class="form-control" placeholder="e.g., 5:00" pattern="^\d{1,2}:[0-5]\d$" required title="Enter pace in m:ss or mm:ss format">
+  </div>
+  <button type="submit" class="btn btn-primary">Save Workout</button>
+</form>
+{% endblock %}

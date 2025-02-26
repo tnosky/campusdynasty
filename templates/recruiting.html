@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Recruiting Round {{ round }}</h2>
+<p>Your remaining recruiting points: <strong>{{ recruiting_points }}</strong></p>
+<p>Please allocate recruiting points to each recruit.</p>
+<form method="post" action="{{ url_for('recruiting') }}">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Overall</th>
+        <th>Offer (Points)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for recruit in recruits %}
+      <tr>
+        <td>{{ recruit.name }}</td>
+        <td>{{ recruit.overall|round(2) }}</td>
+        <td>
+          <input type="number" name="{{ recruit.name }}" step="1" value="0">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit" class="btn btn-primary">Submit Offers for Round {{ round }}</button>
+  <button type="submit" name="skip_recruiting" value="true" class="btn btn-secondary">Skip Recruiting Round</button>
+</form>
+{% endblock %}

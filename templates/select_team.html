@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Select Your Team</h2>
+<form method="get" action="{{ url_for('select_team') }}">
+  <div class="input-group mb-3">
+    <input type="text" name="q" class="form-control" placeholder="Search teams..." value="{{ query }}">
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+<div class="row">
+  {% for team in teams %}
+  <div class="col-md-4">
+    <div class="card mb-3" style="border-color: {{ team.color }};">
+      <img src="{{ team.logo }}" class="card-img-top" alt="{{ team.team }}">
+      <div class="card-body">
+        <h5 class="card-title">{{ team.team }}</h5>
+        <p class="card-text">
+          Conference: {{ team.conference }}<br>
+          Region: {{ team.region }}<br>
+          Overall: {{ team.overall }}
+        </p>
+        <form method="post">
+          <input type="hidden" name="team" value="{{ team.team }}">
+          <button type="submit" class="btn btn-outline-primary">Choose Team</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Schedule Meets</h2>
+
+<!-- Search and Sort Form (GET) -->
+<form method="get" action="{{ url_for('schedule') }}" id="searchForm">
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <input type="text" name="q" class="form-control" placeholder="Search meets..." value="{{ query }}">
+    </div>
+    <div class="col-md-6">
+      <select name="sort_by" class="form-select">
+        <option value="week" {% if sort_by == "week" %}selected{% endif %}>Sort by Week</option>
+        <option value="importance" {% if sort_by == "importance" %}selected{% endif %}>Sort by Importance</option>
+        <option value="alphabetical" {% if sort_by == "alphabetical" %}selected{% endif %}>Sort Alphabetically</option>
+      </select>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-secondary mb-3">Search</button>
+</form>
+
+<!-- Sticky Finalize Schedule Section -->
+<div class="sticky-top-custom">
+  <form method="post" action="{{ url_for('schedule') }}" id="finalizeForm">
+    <button type="submit" class="btn btn-primary mb-3">Finalize Schedule</button>
+    <div class="scrollable-table">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Meet Name</th>
+            <th>Week</th>
+            <th>Importance</th>
+            <th>Competitors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for meet in meets %}
+          <tr>
+            <td>
+              <input type="checkbox" name="meet" value="{{ meet.name }}" id="meet{{ loop.index }}">
+            </td>
+            <td>{{ meet.name }}</td>
+            <td>{{ meet.week }}</td>
+            <td>{{ meet.importance }}</td>
+            <td>
+              {% if meet.competitors and meet.competitors|length > 0 %}
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#competitors{{ loop.index }}" aria-expanded="false" aria-controls="competitors{{ loop.index }}">
+                  View Competitors
+                </button>
+                <div class="collapse" id="competitors{{ loop.index }}">
+                  <ul class="list-group mt-2">
+                    {% for team in meet.competitors %}
+                      <li class="list-group-item">{{ team.team }} ({{ team.overall|round(1) }})</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% else %}
+                <span>No competitors selected yet.</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+{% endblock %}

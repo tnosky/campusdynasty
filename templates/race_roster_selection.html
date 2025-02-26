@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Select Race Roster for {{ meet_name }}</h2>
+<form method="post" action="{{ url_for('race_simulator', meet_name=meet_name) }}">
+  <p>Select between 5 and 7 athletes for the race. (Injured athletes are disabled and display their remaining recovery weeks.)</p>
+  <div class="row">
+    {% for athlete in roster %}
+    <div class="col-md-4">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="runner"
+               value="{{ player_team.team }}_{{ athlete.full_name }}"
+               id="runner{{ loop.index }}"
+               {% if athlete.is_injured %} disabled {% endif %}>
+        <label class="form-check-label" for="runner{{ loop.index }}">
+          {{ athlete.full_name }} (Overall: {{ athlete.overall }})
+          {% if athlete.is_injured %}
+            <small class="text-muted">(Injured: {{ athlete.recovery_weeks }} Week{% if athlete.recovery_weeks != 1 %}s{% endif %} Recovery)</small>
+          {% endif %}
+        </label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="submit" class="btn btn-primary mt-3">Submit Race Roster</button>
+  <button type="submit" name="skip_race" value="true" class="btn btn-secondary mt-3">Skip Race</button>
+</form>
+{% endblock %}

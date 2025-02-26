@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Search Teams</h2>
+<form method="get" action="{{ url_for('search_teams') }}">
+  <div class="input-group mb-3">
+    <input type="text" class="form-control" name="q" placeholder="Search teams..." value="{{ query }}">
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+{% if teams %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Team</th>
+      <th>Overall</th>
+      <th>Conference</th>
+      <th>Region</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for team in teams %}
+    <tr>
+      <td>{{ team.team }}</td>
+      <td>{{ team.overall }}</td>
+      <td>{{ team.conference }}</td>
+      <td>{{ team.region }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No teams found.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Set Training Plan for Week {{ week }}</h2>
+<form method="post">
+  {% set days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] %}
+  {% for day in days %}
+    <div class="mb-3">
+      <label for="{{ day }}">{{ day }}</label>
+      {% if day == "Friday" and scheduled_race %}
+         <select name="{{ day }}" id="{{ day }}" class="form-select" disabled>
+            <option value="Race" selected>Race</option>
+         </select>
+         <small class="text-muted">Race is scheduled on Friday this week.</small>
+      {% else %}
+         <select name="{{ day }}" id="{{ day }}" class="form-select" onchange="toggleWorkoutDetails('{{ day }}')">
+            <option value="Easy Day" {% if training.get(day, '') == "Easy Day" %}selected{% endif %}>Easy Day</option>
+            <option value="Long Run" {% if training.get(day, '') == "Long Run" %}selected{% endif %}>Long Run</option>
+            <option value="Workout" {% if training.get(day) == "Workout" or (training.get(day) is mapping and training.get(day).Type == "Workout") %}selected{% endif %}>Workout</option>
+            <option value="Rest" {% if training.get(day, '') == "Rest" %}selected{% endif %}>Rest</option>
+         </select>
+      {% endif %}
+    </div>
+
+    {% if day != "Friday" or not scheduled_race %}
+      <div id="workout-details-{{ day }}" class="mb-3" style="display: none; margin-left: 20px;">
+         <h5>Workout Details for {{ day }}</h5>
+         <div class="mb-2">
+           <label for="interval_amount_{{ day }}" class="form-label">Interval Amount</label>
+           <input type="number" name="interval_amount_{{ day }}" id="interval_amount_{{ day }}" class="form-control" min="1" placeholder="e.g., 5">
+         </div>
+         <div class="mb-2">
+           <label for="interval_length_{{ day }}" class="form-label">Interval Length (km)</label>
+           <input type="number" step="0.1" name="interval_length_{{ day }}" id="interval_length_{{ day }}" class="form-control" placeholder="e.g., 1.2">
+         </div>
+         <div class="mb-2">
+           <label for="pace_{{ day }}" class="form-label">Pace (m:ss or mm:ss per mile)</label>
+           <input type="text" name="pace_{{ day }}" id="pace_{{ day }}" class="form-control" placeholder="e.g., 5:00" pattern="^\d{1,2}:[0-5]\d$" title="Enter pace in m:ss or mm:ss format (e.g., 5:00 or 05:00)">
+         </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+  <button type="submit" class="btn btn-success">Submit Training Plan</button>
+</form>
+<script>
+function toggleWorkoutDetails(day) {
+    var selectElem = document.getElementById(day);
+    var workoutDiv = document.getElementById("workout-details-" + day);
+    if (selectElem.value === "Workout") {
+        workoutDiv.style.display = "block";
+    } else {
+        workoutDiv.style.display = "none";
+    }
+}
+window.onload = function() {
+    var days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    days.forEach(function(day) {
+        var selectElem = document.getElementById(day);
+        if (selectElem && selectElem.value === "Workout") {
+            var workoutDiv = document.getElementById("workout-details-" + day);
+            if (workoutDiv) {
+                workoutDiv.style.display = "block";
+            }
+        }
+    });
+};
+</script>
+{% endblock %}

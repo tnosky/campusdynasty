@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Race Results for Week {{ result.week }}</h2>
+<p>Meet: {{ result.meet }}</p>
+<h3>Individual Results</h3>
+<ul>
+  {% for res in result.results %}
+    <li>{{ loop.index }}. {{ res[0] }} - Performance: {{ res[1]|round(1) }}</li>
+  {% endfor %}
+</ul>
+<a href="{{ url_for('dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Live Race: {{ meet_name }}</h2>
+<div class="row">
+  <!-- Individual Results Column -->
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-header">
+        Individual Results - Split <span id="current-split">{{ simulation.current_split }}</span>
+      </div>
+      <div class="card-body" id="individual-results" style="max-height: 400px; overflow-y: auto;">
+        <!-- Updated results will appear here -->
+      </div>
+    </div>
+  </div>
+  <!-- Team Results Column -->
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-header">
+        Team Results - Split <span id="current-split-team">{{ simulation.current_split }}</span>
+      </div>
+      <div class="card-body" id="team-results" style="max-height: 400px; overflow-y: auto;">
+        <!-- Updated team results will appear here -->
+      </div>
+    </div>
+  </div>
+</div>
+<div id="final-results" style="display: none;" class="text-center">
+  <h3>Final Results</h3>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+</div>
+{% if simulation.current_split < 8 %}
+  <p class="text-center">Next split in <span id="timer">5</span> seconds...</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+let currentSplit = {{ simulation.current_split }};
+function updateResults(data) {
+    // Update the current split number in both headers.
+    document.getElementById("current-split").innerText = data.split;
+    document.getElementById("current-split-team").innerText = data.split;
+
+    // Build Individual Results Table.
+    let indivHTML = "<table class='table table-striped'><thead><tr><th>Place</th><th>Name</th><th>Team</th>";
+    if (data.split > 1) {  // Don't show change for first split.
+      indivHTML += "<th>Change</th>";
+    }
+    indivHTML += "<th>Points</th></tr></thead><tbody>";
+    data.individual_results.forEach(function(r) {
+        indivHTML += "<tr><td>" + r.place + "</td><td>" + r.name + "</td><td>" + r.team + "</td>";
+        if (data.split > 1) {
+          let arrow = "";
+          if (r.change > 0) {
+            arrow = "<span style='color:red;'>↑" + Math.abs(r.change) + "</span>";
+          } else if (r.change < 0) {
+            arrow = "<span style='color:green;'>↓" + Math.abs(r.change) + "</span>";
+          }
+          indivHTML += "<td>" + arrow + "</td>";
+        }
+        indivHTML += "<td>" + (r.points ? r.points : "") + "</td></tr>";
+    });
+    indivHTML += "</tbody></table>";
+    document.getElementById("individual-results").innerHTML = indivHTML;
+
+    // Build Team Results Table.
+    // Order teams by points ascending (lowest points first).
+    let teamArr = [];
+    for (let team in data.team_results) {
+      teamArr.push({team: team, points: data.team_results[team]});
+    }
+    teamArr.sort((a, b) => a.points - b.points);
+    let teamHTML = "<table class='table table-striped'><thead><tr><th>Team</th><th>Points</th></tr></thead><tbody>";
+    teamArr.forEach(function(t) {
+      teamHTML += "<tr><td>" + t.team + "</td><td>" + t.points + "</td></tr>";
+    });
+    teamHTML += "</tbody></table>";
+    document.getElementById("team-results").innerHTML = teamHTML;
+}
+
+function fetchNextSplit() {
+    if (currentSplit >= 8) return;
+    // Build the URL for the next split.
+    let baseUrl = "{{ url_for('race_split', meet_name=meet_name, split=9999) }}";
+    baseUrl = baseUrl.replace("9999", "");
+    fetch(baseUrl + (currentSplit + 1))
+      .then(response => response.json())
+      .then(data => {
+          currentSplit = data.split;
+          updateResults(data);
+          if (currentSplit < 8) {
+              startTimer();
+          } else {
+              // When the final split is reached, show final results.
+              document.getElementById("final-results").style.display = "block";
+          }
+      });
+}
+
+function startTimer() {
+    let timerSpan = document.getElementById("timer");
+    let timeLeft = 5;
+    timerSpan.innerText = timeLeft;
+    let interval = setInterval(() => {
+        timeLeft--;
+        timerSpan.innerText = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(interval);
+            fetchNextSplit();
+        }
+    }, 1000);
+}
+
+window.onload = function() {
+    if (currentSplit === 0) {
+        // If no split has been run, start split 1 immediately.
+        fetchNextSplit();
+    } else if (currentSplit < 8) {
+        startTimer();
+    }
+};
+</script>
+{% endblock %}

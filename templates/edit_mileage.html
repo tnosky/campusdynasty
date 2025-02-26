@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit Athlete Mileage</h2>
+<form method="post">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Current Mileage</th>
+        <th>New Mileage</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for athlete in team.athletes %}
+      <tr>
+        <td>{{ athlete.full_name }}</td>
+        <td>{{ athlete.mileage }}</td>
+        <td>
+          <input type="number" name="{{ athlete.full_name }}" value="{{ athlete.mileage }}" class="form-control" min="0">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit" class="btn btn-success">Update Mileage</button>
+</form>
+{% endblock %}

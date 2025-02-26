@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Season Review</h2>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>Meet</th>
+      <th>Performance</th>
+      <th>Recruiting Points</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for review in reviews %}
+    <tr>
+      <td>{{ review.meet_name }}</td>
+      <td>{{ review.note }}</td>
+      <td>{{ review.points|round(1) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="2">Total Recruiting Points</th>
+      <th>{{ total_points|round(1) }}</th>
+    </tr>
+  </tfoot>
+</table>
+<a href="{{ url_for('dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+<a href="{{ url_for('start_recruiting') }}" class="btn btn-warning">Start Recruiting</a>
+{% endblock %}

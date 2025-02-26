@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2>Recruiting Summary</h2>
+  {% if recruits %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Overall</th>
+          <th>Committed in Round</th>
+          <th>Offer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for recruit in recruits %}
+        <tr>
+          <td>{{ recruit.name }}</td>
+          <td>{{ recruit.overall|round(2) }}</td>
+          <td>{{ recruit.round }}</td>
+          <td>{{ recruit.offer }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No recruits committed.</p>
+  {% endif %}
+  <a href="{{ url_for('start_next_season') }}" class="btn btn-success">Start Next Season</a>
+</div>
+{% endblock %}

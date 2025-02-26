@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>National Rankings</h2>
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Rank</th>
+      <th>Team</th>
+      <th>Overall</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for team in ranking %}
+    <tr {% if team.team == player_team.team %}class="table-success"{% endif %}>
+      <td>{{ loop.index }}</td>
+      <td>{{ team.team }}</td>
+      <td>{{ team.overall|round(1) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

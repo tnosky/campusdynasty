@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Search Meets</h2>
+<form method="get" action="{{ url_for('search_meets') }}">
+  <div class="input-group mb-3">
+    <input type="text" class="form-control" name="q" placeholder="Search meets..." value="{{ query }}">
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+{% if meets %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Date (Week)</th>
+      <th>Importance</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for meet in meets %}
+    <tr>
+      <td>{{ meet.name }}</td>
+      <td>{{ meet.date }}</td>
+      <td>{{ meet.importance }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No meets found.</p>
+{% endif %}
+{% endblock %}
