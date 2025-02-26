@@ -20,9 +20,13 @@
           Overall: {{ team.overall }}
         </p>
         <form method="post">
-          <input type="hidden" name="team" value="{{ team.team }}">
-          <button type="submit" class="btn btn-outline-primary">Choose Team</button>
-        </form>
+          <select name="team">
+            {% for t in all_teams.values() %}
+              <option value="{{ t.team }}">{{ t.team }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Choose Team</button>
+          </form>
       </div>
     </div>
   </div>
