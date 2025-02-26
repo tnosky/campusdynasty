@@ -162,13 +162,8 @@ game_state = {
 user_game_states = {}
 
 def get_game_state():
-    """
-    Returns a per-user game state from a global dictionary, keyed by session ID.
-    If no game_state_id is in the session, create one.
-    If there's no entry in user_game_states for that ID, initialize it.
-    """
     if "game_state_id" not in session:
-        session["game_state_id"] = str(uuid.uuid4())  # or any unique ID generator
+        session["game_state_id"] = str(uuid.uuid4())
     game_state_id = session["game_state_id"]
     if game_state_id not in user_game_states:
         user_game_states[game_state_id] = {
@@ -179,7 +174,9 @@ def get_game_state():
             "training_plan": {},
             "race_results": {},
             "race_simulation": {},
-            # ... plus any other keys you need (e.g. recruits, recruiting_points, etc.)
+            "recruits": None,
+            "recruiting_round": None,
+            "recruiting_points": None,
         }
     return user_game_states[game_state_id]
 
@@ -576,20 +573,18 @@ def edit_mileage():
     return render_template("edit_mileage.html", team=team)
 
 
-@app.route('/schedule', methods=['GET','POST'])
+@app.route('/schedule', methods=['GET', 'POST'])
 def schedule():
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
 
-    if not game_state.get("player_team"):
-        return redirect(url_for("select_team"))
     query = request.args.get("q", "")
     if query:
         filtered_meets = [m for m in regular_meets if query.lower() in m.name.lower()]
     else:
         filtered_meets = regular_meets
+
     sort_by = request.args.get("sort_by", "week")
     if sort_by == "importance":
         filtered_meets.sort(key=lambda m: m.importance, reverse=True)
@@ -597,6 +592,7 @@ def schedule():
         filtered_meets.sort(key=lambda m: m.name.lower())
     else:
         filtered_meets.sort(key=lambda m: m.week)
+
     if request.method == "POST":
         selected_names = request.form.getlist("meet")
         chosen = [m for m in filtered_meets if m.name in selected_names]
@@ -607,13 +603,13 @@ def schedule():
             if len(wks) != len(set(wks)):
                 flash("You cannot schedule two meets in the same week!", "danger")
             else:
-                game_state["scheduled_meets"] = chosen
+                state["scheduled_meets"] = chosen
                 # Append mandatory postseason meets.
                 setup_postseason()
                 flash("Meet schedule finalized!", "success")
                 return redirect(url_for("dashboard"))
-    return render_template("schedule.html", meets=filtered_meets, query=query, sort_by=sort_by)
 
+    return render_template("schedule.html", meets=filtered_meets, query=query, sort_by=sort_by)
 
 
 @app.route('/view_schedule')
