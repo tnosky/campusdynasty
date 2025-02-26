@@ -5,6 +5,7 @@ import copy
 import names
 import json
 from flask import session
+import uuid
 import os
 
 app = Flask(__name__)
@@ -70,6 +71,7 @@ class Athlete:
         if self.lastname == 'Mann':
             self.overall += 10
         self.overall = min(99, self.overall)
+        self.overall = round(self.overall, 2)
 
 
 class Team:
@@ -77,7 +79,7 @@ class Team:
         self.team = team
         self.color = color
         self.logo = logo
-        self.overall = float(overall)
+        self.overall = round(overall, 2)
         self.conference = conference
         self.region = region
         self.athletes = []
@@ -155,6 +157,30 @@ game_state = {
     "race_simulation": {}  # For live race simulation state.
 }
 
+# Global dictionary to store each user’s game state.
+user_game_states = {}
+
+def get_game_state():
+    # Ensure each user gets a unique id stored in the session.
+    if "game_state_id" not in session:
+        session["game_state_id"] = str(uuid.uuid4())
+    game_state_id = session["game_state_id"]
+    # If there is no game state for this ID, initialize one.
+    if game_state_id not in user_game_states:
+        user_game_states[game_state_id] = {
+            "player_team": None,
+            "current_week": 1,
+            "total_weeks": 16,
+            "scheduled_meets": [],
+            "training_plan": {},
+            "race_results": {},
+            "race_simulation": {},
+            # Add any additional keys you need (e.g., recruiting data).
+            "recruits": None,
+            "recruiting_round": None,
+            "recruiting_points": None,
+        }
+    return user_game_states[game_state_id]
 
 # ------------------------
 # Append Mandatory Postseason Meets
@@ -450,6 +476,10 @@ def index():
 
 @app.route('/select_team', methods=['GET', 'POST'])
 def select_team():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
     query = request.args.get("q", "")
     if query:
         filtered = [t for t in teams.values() if query.lower() in t.team.lower()]
@@ -479,24 +509,26 @@ def inject_globals():
 
 @app.route('/dashboard')
 def dashboard():
-    if not game_state.get("player_team"):
+    state = get_game_state()
+    if not state.get("player_team"):
         return redirect(url_for("select_team"))
-    cw = game_state["current_week"]
-    plan = game_state["training_plan"].get(cw, {})
-    scheduled_race = next((m for m in game_state["scheduled_meets"] if m.week == cw), None)
-    race_done = (cw in game_state["race_results"])
-    race_result = game_state["race_results"].get(cw)
-    season_over = (cw > game_state["total_weeks"])  # Or set this flag based on your postseason logic.
+    cw = state["current_week"]
+    plan = state["training_plan"].get(cw, {})
+    scheduled_race = next((m for m in state["scheduled_meets"] if m.week == cw), None)
+    race_done = (cw in state["race_results"])
+    race_result = state["race_results"].get(cw)
+    season_over = (cw > state["total_weeks"])
     return render_template("dashboard.html",
-                           team=game_state["player_team"],
+                           team=state["player_team"],
                            current_week=cw,
-                           total_weeks=game_state["total_weeks"],
+                           total_weeks=state["total_weeks"],
                            training=plan,
                            scheduled_race=scheduled_race,
                            race_done=race_done,
                            race_result=race_result,
                            season_over=season_over,
-                           scheduled_meets=game_state["scheduled_meets"])
+                           scheduled_meets=state["scheduled_meets"])
+
 
 
 
@@ -527,6 +559,11 @@ def edit_mileage():
 
 @app.route('/schedule', methods=['GET','POST'])
 def schedule():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     if not game_state.get("player_team"):
         return redirect(url_for("select_team"))
     query = request.args.get("q", "")
@@ -571,6 +608,11 @@ def view_schedule():
 
 @app.route('/training', methods=['GET', 'POST'])
 def training():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     if not game_state.get("player_team"):
         return redirect(url_for("select_team"))
     if not game_state.get("scheduled_meets"):
@@ -660,6 +702,11 @@ def design_workout(day):
 
 @app.route('/next_week')
 def next_week():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     if not game_state.get("player_team"):
         return redirect(url_for("select_team"))
     cw = game_state["current_week"]
@@ -735,6 +782,11 @@ def update_team_ratings():
 ### Race Simulator Routes ###
 @app.route('/race_simulator/<meet_name>', methods=['GET', 'POST'])
 def race_simulator(meet_name):
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     if request.method == "POST":
         # Check for Skip Race submission.
         if "skip_race" in request.form:
@@ -770,6 +822,10 @@ def race_simulator(meet_name):
 
 @app.route('/start_race/<meet_name>', methods=['POST'])
 def start_race(meet_name):
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
     sim = game_state["race_simulation"].get(meet_name)
     if sim:
         sim["started"] = True
@@ -779,6 +835,11 @@ def start_race(meet_name):
 
 @app.route('/race_split/<meet_name>/<int:split>')
 def race_split(meet_name, split):
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     data = simulate_split(meet_name, split)
     return jsonify(data)
 
@@ -827,6 +888,11 @@ def check_national_qualification():
 # Before starting national championship (week 16), check qualification.
 @app.route('/start_nationals')
 def start_nationals():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     cw = game_state["current_week"]
     if cw != 16:
         flash("Nationals can only be started in week 16.", "danger")
@@ -882,6 +948,10 @@ def season_review():
 
 @app.route('/recruiting_summary')
 def recruiting_summary():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
     # Build a list of recruits that committed.
     committed_recruits = [r for r in game_state.get("recruits", []) if r["status"] == "Committed"]
     return render_template("recruiting_summary.html", recruits=committed_recruits)
@@ -889,6 +959,11 @@ def recruiting_summary():
 
 @app.route('/start_next_season')
 def start_next_season():
+    state = get_game_state()
+    if not state.get("player_team"):
+        flash("You must select a team before recruiting.", "danger")
+        return redirect(url_for("select_team"))
+
     # Add committed recruits to player's team as new freshmen.
     player_team = game_state["player_team"]
     if "recruits" in game_state:
