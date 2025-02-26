@@ -9,7 +9,7 @@ import uuid
 import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a secure key
+app.secret_key = 'db9a92a0ad6a5f61bcd723111d31e847c879a5d22e2c8e778fe38ed1fda0ab40'
 
 # ========================
 # Load CSV Data
@@ -485,7 +485,7 @@ def select_team():
             return redirect(url_for("dashboard"))
         else:
             flash("Invalid team choice.", "danger")
-            
+
     query = request.args.get("q", "")
     if query:
         filtered = [t for t in teams.values() if query.lower() in t.team.lower()]
@@ -569,7 +569,7 @@ def edit_mileage():
 def schedule():
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     if not game_state.get("player_team"):
@@ -618,7 +618,7 @@ def view_schedule():
 def training():
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     if not game_state.get("player_team"):
@@ -712,7 +712,7 @@ def design_workout(day):
 def next_week():
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     if not game_state.get("player_team"):
@@ -792,7 +792,7 @@ def update_team_ratings():
 def race_simulator(meet_name):
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     if request.method == "POST":
@@ -832,7 +832,7 @@ def race_simulator(meet_name):
 def start_race(meet_name):
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
     sim = game_state["race_simulation"].get(meet_name)
     if sim:
@@ -845,7 +845,7 @@ def start_race(meet_name):
 def race_split(meet_name, split):
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     data = simulate_split(meet_name, split)
@@ -898,7 +898,7 @@ def check_national_qualification():
 def start_nationals():
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     cw = game_state["current_week"]
@@ -958,7 +958,7 @@ def season_review():
 def recruiting_summary():
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
     # Build a list of recruits that committed.
     committed_recruits = [r for r in game_state.get("recruits", []) if r["status"] == "Committed"]
@@ -969,7 +969,7 @@ def recruiting_summary():
 def start_next_season():
     state = get_game_state()
     if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     # Add committed recruits to player's team as new freshmen.
@@ -1059,7 +1059,7 @@ def start_recruiting():
 def recruiting():
     # Ensure player's team is selected.
     if not game_state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
+        
         return redirect(url_for("select_team"))
 
     # If recruits haven't been generated, generate 150 recruits.
