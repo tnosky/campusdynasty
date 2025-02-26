@@ -550,16 +550,18 @@ def dashboard():
 
 @app.route('/roster')
 def roster():
-    if not game_state.get("player_team"):
+    state = get_game_state()
+    if not state.get("player_team"):
         return redirect(url_for("select_team"))
     return render_template("roster.html", team=game_state["player_team"])
 
 
 @app.route('/edit_mileage', methods=['GET', 'POST'])
 def edit_mileage():
-    if not game_state.get("player_team"):
+    state = get_game_state()
+    if not state.get("player_team"):
         return redirect(url_for("select_team"))
-    team = game_state["player_team"]
+    team = state["player_team"]
     if request.method == "POST":
         for a in team.athletes:
             val = request.form.get(a.full_name)
@@ -614,7 +616,8 @@ def schedule():
 
 @app.route('/view_schedule')
 def view_schedule():
-    if not game_state.get("player_team"):
+    state = get_game_state()
+    if not state.get("player_team"):
         return redirect(url_for("select_team"))
     return render_template("view_schedule.html",
                            scheduled=game_state["scheduled_meets"],
@@ -625,17 +628,16 @@ def view_schedule():
 def training():
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
 
-    if not game_state.get("player_team"):
-        return redirect(url_for("select_team"))
-    if not game_state.get("scheduled_meets"):
+    if not state.get("scheduled_meets"):
         flash("You must finalize your schedule before setting your training plan.", "danger")
         return redirect(url_for("schedule"))
-    cw = game_state["current_week"]
-    plan = game_state["training_plan"].get(cw, {})
-    scheduled_race = next((m for m in game_state["scheduled_meets"] if m.week == cw), None)
+
+    cw = state["current_week"]
+    plan = state["training_plan"].get(cw, {})
+    scheduled_race = next((m for m in state["scheduled_meets"] if m.week == cw), None)
+
     if request.method == "POST":
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         for day in days:
@@ -675,17 +677,19 @@ def training():
                         return redirect(url_for("training"))
                 else:
                     plan[day] = sel
-        game_state["training_plan"][cw] = plan
+        state["training_plan"][cw] = plan
         flash("Training plan submitted!", "success")
         return redirect(url_for("dashboard"))
+
     return render_template("training.html", week=cw, training=plan, scheduled_race=scheduled_race)
 
 
 @app.route('/design_workout/<day>', methods=['GET', 'POST'])
 def design_workout(day):
-    if not game_state.get("player_team"):
+    state = get_game_state()
+    if not state.get("player_team"):
         return redirect(url_for("select_team"))
-    cw = game_state["current_week"]
+    cw = state["current_week"]
     if request.method == "POST":
         try:
             ia = int(request.form.get("interval_amount"))
@@ -707,7 +711,7 @@ def design_workout(day):
                 "Pace": ps,
                 "Pace Factor": pf
             }
-            game_state["training_plan"].setdefault(cw, {})[day] = wkt
+            state["training_plan"].setdefault(cw, {})[day] = wkt
             flash(f"Workout for {day} saved.", "success")
             return redirect(url_for("training"))
         except Exception as e:
@@ -719,12 +723,9 @@ def design_workout(day):
 def next_week():
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
 
-    if not game_state.get("player_team"):
-        return redirect(url_for("select_team"))
-    cw = game_state["current_week"]
+    cw = state["current_week"]
 
     # If current week is 17, season is over. Redirect to Season Review.
     if cw == 17:
@@ -732,39 +733,38 @@ def next_week():
         return redirect(url_for("season_review"))
 
     # Block progression if a race is scheduled for this week but the result is not yet recorded.
-    scheduled_race = next((m for m in game_state["scheduled_meets"] if m.week == cw), None)
-    if scheduled_race and cw not in game_state["race_results"]:
+    scheduled_race = next((m for m in state["scheduled_meets"] if m.week == cw), None)
+    if scheduled_race and cw not in state["race_results"]:
         flash("You must complete the race for this week before proceeding!", "danger")
         return redirect(url_for("dashboard"))
 
     # Ensure a training plan for the current week is set.
-    if not game_state["training_plan"].get(cw):
+    if not state["training_plan"].get(cw):
         flash(f"You must set the training plan for week {cw} before proceeding.", "danger")
         return redirect(url_for("training"))
 
     # Update team ratings and athlete statuses.
-    update_team_ratings()
-    changes = update_athletes()
+    update_team_ratings()  # Ensure this function internally uses get_game_state() if needed.
+    changes = update_athletes()  # Similarly, update_athletes should operate on the same state.
     for msg in changes:
         flash(msg, "info")
 
     # Copy current week's training plan to next week.
     next_week_num = cw + 1
-    new_plan = copy.deepcopy(game_state["training_plan"][cw])
+    new_plan = copy.deepcopy(state["training_plan"][cw])
 
-    # If a race is scheduled this week, next week’s Friday must be "Race".
+    # If a race is scheduled this week, next week's Friday must be "Race".
     if scheduled_race:
         new_plan["Friday"] = "Race"
     else:
-        # If no race is scheduled this week but the previous week's Friday was "Race", set it to "Easy Day".
-        previous_scheduled_race = next((m for m in game_state["scheduled_meets"] if m.week == cw - 1), None)
-        if previous_scheduled_race and game_state["training_plan"].get(cw).get("Friday") == "Race":
+        # If no race is scheduled this week but the current week's Friday is "Race", set it to "Easy Day".
+        if state["training_plan"].get(cw).get("Friday") == "Race":
             new_plan["Friday"] = "Easy Day"
 
-    game_state["training_plan"][next_week_num] = new_plan
+    state["training_plan"][next_week_num] = new_plan
 
     # Increment the current week.
-    game_state["current_week"] += 1
+    state["current_week"] += 1
     return redirect(url_for("dashboard"))
 
 
@@ -799,19 +799,18 @@ def update_team_ratings():
 def race_simulator(meet_name):
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
 
     if request.method == "POST":
         # Check for Skip Race submission.
         if "skip_race" in request.form:
-            cw = game_state["current_week"]
+            cw = state["current_week"]
             data = {"final": True, "skipped": True, "player_position": None, "total_teams": 0}
-            game_state["race_results"][cw] = data
+            state["race_results"][cw] = data
             flash("You skipped the race this week.", "info")
             return redirect(url_for("dashboard"))
         selected_ids = request.form.getlist("runner")
-        pteam = game_state["player_team"]
+        pteam = state["player_team"]
         final_roster = []
         for a in pteam.athletes:
             ident = f"{pteam.team}_{a.full_name}"
@@ -821,14 +820,16 @@ def race_simulator(meet_name):
             flash("You must select at least 5 runners, or choose to skip the race.", "danger")
             return redirect(url_for("race_simulator", meet_name=meet_name))
         final_roster = final_roster[:7]
-        game_state["race_roster"] = final_roster
-        init_race_simulation(meet_name)
+        state["race_roster"] = final_roster
+        init_race_simulation(meet_name)  # Ensure init_race_simulation uses state as well.
         return redirect(url_for("race_simulator", meet_name=meet_name))
-    if meet_name not in game_state["race_simulation"]:
-        pteam = game_state["player_team"]
+
+    if meet_name not in state["race_simulation"]:
+        pteam = state["player_team"]
         sorted_ath = sorted(pteam.athletes, key=lambda a: a.overall, reverse=True)[:10]
         return render_template("race_roster_selection.html", roster=sorted_ath, meet_name=meet_name)
-    sim = game_state["race_simulation"][meet_name]
+
+    sim = state["race_simulation"][meet_name]
     if not sim.get("started"):
         return render_template("race_simulator.html", meet_name=meet_name)
     else:
@@ -839,9 +840,8 @@ def race_simulator(meet_name):
 def start_race(meet_name):
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
-    sim = game_state["race_simulation"].get(meet_name)
+    sim = state["race_simulation"].get(meet_name)
     if sim:
         sim["started"] = True
         sim["current_split"] = 0
@@ -852,17 +852,16 @@ def start_race(meet_name):
 def race_split(meet_name, split):
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
-
     data = simulate_split(meet_name, split)
     return jsonify(data)
 
 
 @app.route('/rankings')
 def rankings():
+    state = get_game_state()
     ranking = sorted(teams.values(), key=lambda t: t.overall, reverse=True)
-    return render_template("rankings.html", ranking=ranking, player_team=game_state["player_team"])
+    return render_template("rankings.html", ranking=ranking, player_team=state.get("player_team"))
 
 
 # ------------------------
@@ -905,38 +904,35 @@ def check_national_qualification():
 def start_nationals():
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
 
-    cw = game_state["current_week"]
+    cw = state["current_week"]
     if cw != 16:
         flash("Nationals can only be started in week 16.", "danger")
         return redirect(url_for("dashboard"))
     qualifies = check_national_qualification()
     if not qualifies:
         flash("Your team did not qualify for Nationals. Season is over.", "danger")
-        # Optionally, you can reset the game or redirect to a season-end page.
         return redirect(url_for("dashboard"))
-    # Otherwise, create the national championship meet.
     # For nationals, competitors are the top 31 nationally.
-    nat_meet = next((m for m in game_state["scheduled_meets"] if m.name == "National Championship"), None)
+    nat_meet = next((m for m in state["scheduled_meets"] if m.name == "National Championship"), None)
     if not nat_meet:
         all_teams_sorted = sorted(teams.values(), key=lambda t: t.overall, reverse=True)
         nat_meet = Meet(name="National Championship", date=None, importance=10)
         nat_meet.week = 16
         nat_meet.competitors = all_teams_sorted[:31]
-        game_state["scheduled_meets"].append(nat_meet)
+        state["scheduled_meets"].append(nat_meet)
     flash("Nationals starting!", "success")
     return redirect(url_for("race_simulator", meet_name=nat_meet.name))
 
 
 @app.route('/season_review')
 def season_review():
-    # Build review for each scheduled meet.
+    state = get_game_state()
     reviews = []
-    for meet in game_state["scheduled_meets"]:
-        if meet.week in game_state["race_results"]:
-            result = game_state["race_results"][meet.week]
+    for meet in state["scheduled_meets"]:
+        if meet.week in state["race_results"]:
+            result = state["race_results"][meet.week]
             if result.get("skipped"):
                 note = "Race Skipped"
                 pts = 0
@@ -950,6 +946,15 @@ def season_review():
                 "meet": meet
             })
     total_points = sum(r["points"] for r in reviews)
+
+    recruiting_summary = []
+    if "recruits" in state:
+        for recruit in state["recruits"]:
+            if recruit.get("round", 0) > 0 and recruit["offer"] > 0:
+                recruiting_summary.append(f"{recruit['name']}: {recruit['status']} (Offer: {recruit['offer']})")
+
+    return render_template("season_review.html", reviews=reviews, total_points=total_points,
+                           recruiting_summary=recruiting_summary)
 
     # Build recruiting summary: list only for recruits that had an offer.
     recruiting_summary = []
@@ -965,10 +970,8 @@ def season_review():
 def recruiting_summary():
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
-    # Build a list of recruits that committed.
-    committed_recruits = [r for r in game_state.get("recruits", []) if r["status"] == "Committed"]
+    committed_recruits = [r for r in state.get("recruits", []) if r["status"] == "Committed"]
     return render_template("recruiting_summary.html", recruits=committed_recruits)
 
 
@@ -976,13 +979,12 @@ def recruiting_summary():
 def start_next_season():
     state = get_game_state()
     if not state.get("player_team"):
-        
         return redirect(url_for("select_team"))
 
     # Add committed recruits to player's team as new freshmen.
-    player_team = game_state["player_team"]
-    if "recruits" in game_state:
-        for recruit in game_state["recruits"]:
+    player_team = state["player_team"]
+    if "recruits" in state:
+        for recruit in state["recruits"]:
             if recruit["status"] == "Committed":
                 names_list = recruit["name"].split()
                 firstname = names_list[0]
@@ -991,7 +993,7 @@ def start_next_season():
                 new_athlete.health = random.randint(60, 99)
                 player_team.athletes.append(new_athlete)
 
-    # Advance every athlete one class; SR athletes graduate.
+    # Promote every athlete one class; SR athletes graduate.
     def next_class(cls):
         if cls == "FR": return "SO"
         if cls == "SO": return "JR"
@@ -1006,7 +1008,7 @@ def start_next_season():
             if new_cls:
                 athlete.year_class = new_cls
                 new_roster.append(athlete)
-            # Else, athlete graduates.
+            # If new_cls is None, the athlete graduates.
         team.athletes = new_roster
         # For teams other than the player's, generate 5 new freshmen.
         if team.team != player_team.team:
@@ -1022,15 +1024,15 @@ def start_next_season():
                 new_freshmen.append(new_athlete)
             team.athletes.extend(new_freshmen)
 
-    # Reset the season: clear scheduled meets, training plans, race results, recruiting data, etc.
-    game_state["current_week"] = 1
-    game_state["scheduled_meets"] = []
-    game_state["training_plan"] = {}
-    game_state["race_results"] = {}
-    game_state["race_simulation"] = {}
-    if "recruits" in game_state:
-        del game_state["recruits"]
-    game_state["recruiting_round"] = 1
+    # Reset season state.
+    state["current_week"] = 1
+    state["scheduled_meets"] = []
+    state["training_plan"] = {}
+    state["race_results"] = {}
+    state["race_simulation"] = {}
+    if "recruits" in state:
+        del state["recruits"]
+    state["recruiting_round"] = 1
     update_team_ratings()
 
     flash("New season started! Your team has been updated.", "success")
@@ -1058,19 +1060,20 @@ def calculate_recruiting_points(meet, placement):
 
 @app.route('/start_recruiting')
 def start_recruiting():
-    flash("Recruiting functionality is not yet implemented.", "info")
+    state = get_game_state()
+    flash("Recruiting functionality is now active.", "info")
     return redirect(url_for("dashboard"))
 
 
 @app.route('/recruiting', methods=['GET', 'POST'])
 def recruiting():
+    state = get_game_state()
     # Ensure player's team is selected.
-    if not game_state.get("player_team"):
-        
+    if not state.get("player_team"):
         return redirect(url_for("select_team"))
 
     # If recruits haven't been generated, generate 150 recruits.
-    if "recruits" not in game_state:
+    if "recruits" not in state:
         recruits = []
         for _ in range(150):
             full_name = names.get_full_name(gender='male')
@@ -1085,20 +1088,20 @@ def recruiting():
             }
             recruits.append(recruit)
         recruits.sort(key=lambda r: r["overall"], reverse=True)
-        game_state["recruits"] = recruits
-        game_state["recruiting_round"] = 1
-        # Set initial recruiting points (e.g., between 50 and 100; here we use 100 for testing).
-        game_state["recruiting_points"] = 100
+        state["recruits"] = recruits
+        state["recruiting_round"] = 1
+        # Set initial recruiting points (for example, 100 for testing; adjust as needed).
+        state["recruiting_points"] = 100
 
-    current_round = game_state["recruiting_round"]
-    remaining_points = game_state["recruiting_points"]
+    current_round = state["recruiting_round"]
+    remaining_points = state["recruiting_points"]
 
     # GET request: Reset status for recruits that are not committed so they appear in the list.
     if request.method == "GET":
-        for recruit in game_state["recruits"]:
+        for recruit in state["recruits"]:
             if recruit["status"] != "Committed":
                 recruit["status"] = None
-        pending_recruits = [r for r in game_state["recruits"] if r["status"] is None]
+        pending_recruits = [r for r in state["recruits"] if r["status"] is None]
         return render_template("recruiting.html",
                                recruits=pending_recruits,
                                round=current_round,
@@ -1108,13 +1111,13 @@ def recruiting():
     if request.method == "POST":
         # If "Skip Recruiting Round" button was pressed.
         if "skip_recruiting" in request.form:
-            for recruit in game_state["recruits"]:
+            for recruit in state["recruits"]:
                 if recruit["status"] is None:
                     recruit["status"] = "Declined"
                     recruit["round"] = current_round
             flash(f"You skipped recruiting round {current_round}.", "info")
-            game_state["recruiting_round"] += 1
-            current_round = game_state["recruiting_round"]
+            state["recruiting_round"] += 1
+            current_round = state["recruiting_round"]
             if current_round > 3:
                 flash("Recruiting is complete.", "success")
                 return redirect(url_for("recruiting_summary"))
@@ -1124,7 +1127,7 @@ def recruiting():
         # Process offers.
         offers = {}
         round_total = 0.0
-        for recruit in game_state["recruits"]:
+        for recruit in state["recruits"]:
             if recruit["status"] is None:
                 offer_str = request.form.get(recruit["name"])
                 if offer_str:
@@ -1140,13 +1143,18 @@ def recruiting():
             flash(f"Total offered points ({round_total}) exceed your remaining recruiting points ({remaining_points}).",
                   "danger")
             return redirect(url_for("recruiting"))
+        if len(offers) < 5:
+            flash(
+                "You must make offers for at least 5 recruits (those with an offer) or choose to skip the recruiting round.",
+                "danger")
+            return redirect(url_for("recruiting"))
 
-
-        player_team = game_state["player_team"]
+        player_team = state["player_team"]
         team_overall = player_team.overall  # Assume this is updated.
 
         def calculate_commitment_chance(recruit, offer):
-            # Define required cost: recruit.overall - 35 (so a recruit with overall 40 requires 5 points; overall 85 requires 50).
+            # Define required cost: recruit.overall - 35
+            # (so a recruit with overall 40 requires 5 points; overall 85 requires 50).
             required = recruit["overall"] - 35
             base_chance = max(0.1, 1.0 - ((recruit["overall"] - team_overall) / 100))
             final_chance = base_chance * (offer / required)
@@ -1154,14 +1162,14 @@ def recruiting():
 
         round_results = []
         # Process only recruits that received an offer.
-        for recruit in game_state["recruits"]:
+        for recruit in state["recruits"]:
             if recruit["status"] is None and recruit["name"] in offers:
                 offer_val = offers[recruit["name"]]
                 chance = calculate_commitment_chance(recruit, offer_val)
                 if random.random() < chance:
                     recruit["status"] = "Committed"
                     # Deduct the offered points from the recruiting pool.
-                    game_state["recruiting_points"] -= offer_val
+                    state["recruiting_points"] -= offer_val
                 else:
                     recruit["status"] = "Declined"
                 recruit["round"] = current_round
@@ -1170,14 +1178,14 @@ def recruiting():
         if round_results:
             flash("Round " + str(current_round) + " results:<br>" + "<br>".join(round_results), "info")
 
-        game_state["recruiting_round"] += 1
-        current_round = game_state["recruiting_round"]
+        state["recruiting_round"] += 1
+        current_round = state["recruiting_round"]
         if current_round > 3:
             flash("Recruiting is complete.", "success")
             return redirect(url_for("recruiting_summary"))
         else:
             flash(
-                f"Proceeding to Recruiting Round {current_round}. Remaining Recruiting Points: {game_state['recruiting_points']}",
+                f"Proceeding to Recruiting Round {current_round}. Remaining Recruiting Points: {state['recruiting_points']}",
                 "info")
             return redirect(url_for("recruiting"))
 
