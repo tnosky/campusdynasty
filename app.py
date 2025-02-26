@@ -477,9 +477,15 @@ def index():
 @app.route('/select_team', methods=['GET', 'POST'])
 def select_team():
     state = get_game_state()
-    if not state.get("player_team"):
-        flash("You must select a team before recruiting.", "danger")
-        return redirect(url_for("select_team"))
+    if request.method == 'POST':
+        chosen_team = request.form.get('team')
+        if chosen_team in teams:  # or your logic
+            state["player_team"] = teams[chosen_team]
+            flash("Team selected!", "success")
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Invalid team choice.", "danger")
+            
     query = request.args.get("q", "")
     if query:
         filtered = [t for t in teams.values() if query.lower() in t.team.lower()]
@@ -510,7 +516,9 @@ def inject_globals():
 @app.route('/dashboard')
 def dashboard():
     state = get_game_state()
+    # If user does not have a team, show them a note or redirect them to selection once:
     if not state.get("player_team"):
+        flash("Please select a team first.", "info")
         return redirect(url_for("select_team"))
     cw = state["current_week"]
     plan = state["training_plan"].get(cw, {})
@@ -1248,5 +1256,5 @@ def debug_end_season():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
     app.run(debug=True)
