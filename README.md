@@ -1,6 +1,6 @@
 # Campus Dynasty: XC
 
-A college cross country coaching game.
+A college cross country coaching game. Inspired by Capus Dynasty, an iOS college basketball coaching simulator.
 
 Pick any Division I program, then run its season: build the meet schedule, plan every day of training, race, and recruit the next class. Teams, runners, and meets are real, loaded from TFRRS data for the 2024 season.
 
